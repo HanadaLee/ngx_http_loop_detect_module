@@ -9,8 +9,8 @@
 #include <ngx_http.h>
 
 
-#define NGX_HTTP_LOOP_CHECK_VARIABLE_CURRENT_LOOPS      0
-#define NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_CDN_LOOP     1
+#define NGX_HTTP_LOOP_CHECK_VARIABLE_CURRENT_LOOPS          0
+#define NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_ADD_CDN_LOOP     1
 
 typedef struct {
     ngx_flag_t                 enable;
@@ -116,9 +116,9 @@ static ngx_http_variable_t  ngx_http_loop_check_vars[] = {
       NGX_HTTP_LOOP_CHECK_VARIABLE_CURRENT_LOOPS,
       0, 0 },
 
-    { ngx_string("loop_check_proxy_cdn_loop"), NULL,
+    { ngx_string("loop_check_proxy_add_cdn_loop"), NULL,
       ngx_http_loop_check_variable,
-      NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_CDN_LOOP,
+      NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_ADD_CDN_LOOP,
       0, 0 },
 
       ngx_http_null_variable
@@ -329,7 +329,7 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
     ngx_http_loop_check_ctx_t    *ctx;
     ngx_http_loop_check_conf_t   *conf;
     size_t                        len, total_len;
-    u_char                       *proxy_cdn_loop, *p;
+    u_char                       *proxy_add_cdn_loop, *p;
     
     ctx = ngx_http_get_module_ctx(r, ngx_http_loop_check_module);
     if (ctx == NULL) {
@@ -354,12 +354,12 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
 
         v->len = ngx_sprintf(v->data, "%i", ctx->current_loops) - v->data;
 
-    } else if (data == NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_CDN_LOOP) {
+    } else if (data == NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_ADD_CDN_LOOP) {
 
         conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_check_module);
 
         if (ctx->extra_cdn_loop.len > 0) {
-            proxy_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
+            proxy_add_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
                                                   + sizeof("; loops=") - 1
                                                   + NGX_INT_T_LEN
                                                   + sizeof(", ") - 1
@@ -367,27 +367,28 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
                                                   + 1);
 
         } else {
-            proxy_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
+            proxy_add_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
                                                   + sizeof("; loops=") - 1
                                                   + NGX_INT_T_LEN
                                                   + 1);
         }
 
-        if (proxy_cdn_loop == NULL) {
+        if (proxy_add_cdn_loop == NULL) {
             return NGX_ERROR;
         }
 
         if (ctx->extra_cdn_loop.len > 0) {
-            p = ngx_sprintf(proxy_cdn_loop, "%V; loops=%i, %V", &conf->cdn_id,
-                    ctx->current_loops + 1, &ctx->extra_cdn_loop);
+            p = ngx_sprintf(proxy_add_cdn_loop, "%V; loops=%i, %V",
+                    &conf->cdn_id, ctx->current_loops + 1,
+                    &ctx->extra_cdn_loop);
 
         } else {
-            p = ngx_sprintf(proxy_cdn_loop, "%V; loops=%i", &conf->cdn_id,
+            p = ngx_sprintf(proxy_add_cdn_loop, "%V; loops=%i", &conf->cdn_id,
                     ctx->current_loops + 1);
         }
 
-        v->len = p - proxy_cdn_loop;
-        v->data = proxy_cdn_loop;
+        v->len = p - proxy_add_cdn_loop;
+        v->data = proxy_add_cdn_loop;
     }
 
     v->valid = 1;

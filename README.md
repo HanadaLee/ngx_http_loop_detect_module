@@ -16,7 +16,7 @@
   - [loop\_check\_max\_allow\_loops](#loop_check_max_allow_loops)
 - [Variables](#variables)
   - [$loop\_check\_current\_loops](#loop_check_current_loops)
-  - [$loop\_check\_proxy\_cdn\_loop](#loop_check_proxy_cdn_loop)
+  - [$loop\_check\_proxy\_add\_cdn\_loop](#loop_check_proxy_add_cdn_loop)
 - [How It Works](#how-it-works)
 - [Author](#author)
 - [License](#license)
@@ -39,7 +39,7 @@ http {
         listen 80;
         server_name example.com;
         location / {
-            proxy_set_header CDN-Loop $loop_check_proxy_cdn_loop;
+            proxy_set_header CDN-Loop $loop_check_proxy_add_cdn_loop;
             proxy_pass http://example.upstream.com;
         }
     }
@@ -98,7 +98,7 @@ Sets the maximum number of allowed loops before blocking the request. The number
 
 Returns the current detected loop count extracted from the CDN-Loop header. This value represents the number of hops your request has already passed through CDN nodes.
 
-## $loop_check_proxy_cdn_loop
+## $loop_check_proxy_add_cdn_loop
 
 Constructs the new `CDN-Loop` header value to be sent to downstream proxies. This value includes:
 
@@ -109,7 +109,7 @@ Example Usage:
 
 ```nginx
 location / {
-    proxy_set_header CDN-Loop $loop_check_proxy_cdn_loop;
+    proxy_set_header CDN-Loop $loop_check_proxy_add_cdn_loop;
     proxy_pass http://backend;
 }
 ```
