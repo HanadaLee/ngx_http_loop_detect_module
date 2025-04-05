@@ -210,8 +210,8 @@ ngx_http_loop_check_parse_cdn_info(u_char *item_start, u_char *item_last, ngx_st
         return NGX_ERROR;
     }
 
-    if (pos - item_start != cdn_id.len
-        || ngx_strncasecmp(item_start, cdn_id.data, pos - item_start) != 0)
+    if ((size_t) (pos - item_start) != cdn_id.len
+        || ngx_strncasecmp(item_start, cdn_id.data, (size_t) (pos - item_start)) != 0)
     {
         return NGX_ERROR;
     }
@@ -279,6 +279,7 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
 
     current_loops = 0;
     new_len = 0;
+    new_str = NULL;
     start = cdn_loop_value.data;
     last = start + cdn_loop_value.len;
     pos = start;
