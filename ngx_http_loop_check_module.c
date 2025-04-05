@@ -281,7 +281,7 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     pos = start;
 
     while (pos < last) {
-        comma = ngx_strlchr(start, end, ',');
+        comma = ngx_strlchr(pos, last, ',');
         if (comma == NULL) {
             comma = last;
         }
