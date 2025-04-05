@@ -354,14 +354,14 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
 
             pos--;
 
-            new_len = (size_t) (pos - start) + (last - (comma + 1));
+            new_len = (size_t) (pos - start) + (last - comma);
             new_str = ngx_palloc(r->pool, new_len + 1);
             if (!new_str) {
                 return NGX_ERROR;
             }
 
             ngx_memcpy(new_str, start, pos - start);
-            ngx_memcpy(new_str + (pos - start), comma + 1, last - (comma + 1));
+            ngx_memcpy(new_str + (pos - start), comma, last - comma);
             new_str[new_len] = '\0';
 
             break;
