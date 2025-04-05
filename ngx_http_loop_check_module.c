@@ -43,9 +43,13 @@ static ngx_int_t ngx_http_loop_check_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data);
 static ngx_int_t ngx_http_loop_check_init(ngx_conf_t *cf);
 
+
 static ngx_conf_num_bounds_t  ngx_http_loop_check_status_bounds = {
     ngx_conf_check_num_bounds, 400, 599
 };
+
+
+static ngx_str_t  ngx_http_cdn_loop_headers = ngx_string("http_cdn_loop");
 
 
 static ngx_command_t  ngx_http_loop_check_commands[] = {
@@ -83,7 +87,7 @@ static ngx_command_t  ngx_http_loop_check_commands[] = {
 
 
 static ngx_http_module_t  ngx_http_loop_check_module_ctx = {
-    NULL,                               /* preconfiguration */
+    ngx_http_loop_check_add_variables,  /* preconfiguration */
     ngx_http_loop_check_init,           /* postconfiguration */
     NULL,                               /* create main configuration */
     NULL,                               /* init main configuration */
@@ -181,7 +185,8 @@ ngx_http_loop_check_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->max_allow_loops, prev->max_allow_loops, 10);
     ngx_conf_merge_str_value(conf->cdn_id, prev->cdn_id, "openresty");
 
-    conf->http_cdn_loop_index = ngx_http_get_variable_index(cf, "http_cdn_loop");
+    conf->http_cdn_loop_index = ngx_http_get_variable_index(cf,
+        &ngx_http_cdn_loop_headers);
     if (conf->http_cdn_loop_index == NGX_ERROR) {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
             "loop_check: could not get variable index for $http_cdn_loop");
@@ -248,7 +253,7 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     ngx_http_variable_value_t   *value;
     ngx_str_t                    cdn_loop_value;
     ngx_int_t                    current_loops;
-    u_char                      *start, *last, *pos, ;
+    u_char                      *start, *last, *pos;
     u_char                      *comma, *item_start, *item_last;
     u_char                      *new_str;
     size_t                       new_len;
@@ -333,7 +338,6 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
 {
     ngx_http_loop_check_ctx_t    *ctx;
     ngx_http_loop_check_conf_t   *conf;
-    size_t                        len, total_len;
     u_char                       *proxy_add_cdn_loop, *p;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_loop_check_module);
