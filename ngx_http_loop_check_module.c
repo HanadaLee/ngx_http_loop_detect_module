@@ -197,28 +197,37 @@ ngx_http_loop_check_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_loop_check_parse_cdn_info(u_char *item_start, u_char *item_last, ngx_str_t cdn_id,
+ngx_http_loop_check_parse_cdn_info(u_char *start, size_t len, ngx_str_t cdn_id,
     ngx_int_t *current_loops)
 {
-    u_char         *pos;
+    u_char         *pos, *last;
     ngx_int_t       loops;
 
     loops = 0;
+    last = start + len;
 
-    pos = ngx_strlchr(item_start, item_last, ';');
-    if (pos == NULL || pos == item_start || pos == item_last) {
+    while (start < last && *start == ' ') {
+        start++;
+    }
+
+    while (last > start && last[-1] == ' ') {
+        last--;
+    }
+
+    pos = ngx_strlchr(start, last, ';');
+    if (pos == NULL || pos == start || pos == last) {
         return NGX_ERROR;
     }
 
-    if ((size_t) (pos - item_start) != cdn_id.len
-        || ngx_strncasecmp(item_start, cdn_id.data, (size_t) (pos - item_start)) != 0)
+    if ((size_t) (pos - start) != cdn_id.len
+        || ngx_strncasecmp(start, cdn_id.data, (size_t) (pos - start)) != 0)
     {
         return NGX_ERROR;
     }
 
     pos++;
 
-    if (item_last - pos < 7) {
+    if (last - pos < 7) {
         return NGX_ERROR;
     }
 
@@ -228,11 +237,11 @@ ngx_http_loop_check_parse_cdn_info(u_char *item_start, u_char *item_last, ngx_st
 
     pos += 7;
 
-    if (pos >= item_last) {
+    if (pos >= last) {
         return NGX_ERROR;
     }
 
-    while (pos < item_last) {
+    while (pos < last) {
         if (*pos < '0' || *pos > '9') {
             return NGX_ERROR;
         }
@@ -257,7 +266,7 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     ngx_str_t                    cdn_loop_value;
     ngx_int_t                    current_loops;
     u_char                      *start, *last, *pos;
-    u_char                      *comma, *item_start, *item_last;
+    u_char                      *comma;
     u_char                      *new_str;
     size_t                       new_len;
 
@@ -285,49 +294,74 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     pos = start;
 
     while (pos < last) {
+
         comma = ngx_strlchr(pos, last, ',');
         if (comma == NULL) {
             comma = last;
         }
 
-        item_start = pos;
-        item_last = comma;
-
-        while (item_start < item_last && *item_start == ' ') {
-            item_start++;
-        }
-
-        while (item_last > item_start && item_last[-1] == ' ') {
-            item_last--;
-        }
-
-        if (item_start >= item_last) {
-            pos = comma + 1;
+        if (pos == comma) {
+            pos++;
             continue;
         }
 
-        if (ngx_http_loop_check_parse_cdn_info(item_start, item_last,
+        if (ngx_http_loop_check_parse_cdn_info(pos, (size_t) (comma - pos),
             conf->cdn_id, &current_loops) == NGX_OK)
         {
+            if (pos == start) {
 
-            if (last - (comma + 1) < 0) {
-                new_len = item_start - start;
+                if (comma == last) {
+                    break;
+                }
 
-            } else {
-                new_len = (item_start - start) + (last - (comma + 1));
+                pos = comma + 1;
+
+                while (pos < last && *pos == ' ') {
+                    pos++;
+                }
+
+                new_len = last - pos;
+                new_str = ngx_palloc(r->pool, new_len + 1);
+                if (!new_str) {
+                    return NGX_ERROR;
+                }
+
+                ngx_memcpy(new_str, pos, new_len);
+                new_str[new_len] = '\0';
+
+                break;
             }
 
+            if (comma == last) {
+
+                pos--; /* remove comma */
+
+                while (pos > start && *pos == ' ') {
+                    pos--;
+                }
+
+                new_len = pos - start;
+                new_str = ngx_palloc(r->pool, new_len + 1);
+                if (!new_str) {
+                    return NGX_ERROR;
+                }
+
+                ngx_memcpy(new_str, start, new_len);
+                new_str[new_len] = '\0';
+
+                break;
+            }
+
+            pos--;
+
+            new_len = (size_t) (pos - start) + (last - (comma + 1));
             new_str = ngx_palloc(r->pool, new_len + 1);
             if (!new_str) {
                 return NGX_ERROR;
             }
 
-            ngx_memcpy(new_str, start, item_start - start);
-
-            if (last - (comma + 1) > 0) {
-                ngx_memcpy(new_str + (item_start - start), comma + 1, last - (comma + 1));
-            }
-
+            ngx_memcpy(new_str, start, pos - start);
+            ngx_memcpy(new_str + (pos - start), comma + 1, last - (comma + 1));
             new_str[new_len] = '\0';
 
             break;
