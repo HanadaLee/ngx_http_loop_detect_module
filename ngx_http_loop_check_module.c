@@ -29,9 +29,8 @@ typedef struct {
 } ngx_http_loop_check_ctx_t;
 
 
-static ngx_int_t ngx_http_loop_check_parse_cdn_info(ngx_str_t cdn_loop_value,
-    u_char *item_start, u_char *item_last, ngx_str_t cdn_id,
-    ngx_int_t *current_loops);
+static ngx_int_t ngx_http_loop_check_parse_cdn_info(u_char *item_start,
+    u_char *item_last, ngx_str_t cdn_id, ngx_int_t *current_loops);
 static ngx_int_t ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     ngx_http_loop_check_ctx_t *ctx);
 static ngx_int_t ngx_http_loop_check_handler(ngx_http_request_t *r);
@@ -198,45 +197,49 @@ ngx_http_loop_check_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
 
 static ngx_int_t
-ngx_http_loop_check_parse_cdn_info(ngx_str_t cdn_loop_value,
-    u_char *item_start, u_char *item_last, ngx_str_t cdn_id,
+ngx_http_loop_check_parse_cdn_info(u_char *item_start, u_char *item_last, ngx_str_t cdn_id,
     ngx_int_t *current_loops)
 {
-    u_char         *semicolon;
-    u_char         *post_ptr;
+    u_char         *pos;
     ngx_int_t       loops;
-    size_t          pre_len;
-    ngx_str_t       pre_part;
 
     loops = 0;
-    semicolon = ngx_strlchr(item_start, item_last, ';');
-    if (semicolon == NULL || semicolon == item_start || semicolon == item_last) {
+
+    pos = ngx_strlchr(item_start, item_last, ';');
+    if (pos == NULL || pos == item_start || pos == item_last) {
         return NGX_ERROR;
     }
 
-    pre_len = semicolon - item_start;
-    pre_part.data = item_start;
-    pre_part.len = pre_len;
-
-    if (pre_part.len != cdn_id.len
-        || ngx_strncasecmp(pre_part.data, cdn_id.data, pre_part.len) != 0)
+    if (pos - item_start != cdn_id.len
+        || ngx_strncasecmp(item_start, cdn_id.data, pos - item_start) != 0)
     {
         return NGX_ERROR;
     }
 
-    if (ngx_strncasecmp(post_ptr, (u_char *) "; loops=", 8) != 0) {
+    pos++;
+
+    if (item_last - pos < 7) {
         return NGX_ERROR;
     }
 
-    post_ptr += 8;
-
-    while (post_ptr < item_last && *post_ptr >= '0' && *post_ptr <= '9') {
-        loops = loops * 10 + (*post_ptr - '0');
-        post_ptr++;
+    if (ngx_strncasecmp(pos, (u_char *) " loops=", 7) != 0) {
+        return NGX_ERROR;
     }
 
-    if (loops == 0 && (post_ptr == semicolon + 6 || post_ptr == item_last)) {
+    pos += 7;
+
+    if (pos >= item_last) {
         return NGX_ERROR;
+    }
+
+    while (pos < item_last) {
+        if (*pos < '0' || *pos > '9') {
+            return NGX_ERROR;
+        }
+
+        loops = loops * 10 + (*pos - '0');
+
+        pos++;
     }
 
     *current_loops = loops;
@@ -302,8 +305,8 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
             continue;
         }
 
-        if (ngx_http_loop_check_parse_cdn_info(cdn_loop_value, item_start,
-                item_last, conf->cdn_id, &current_loops) == NGX_OK)
+        if (ngx_http_loop_check_parse_cdn_info(item_start, item_last,
+            conf->cdn_id, &current_loops) == NGX_OK)
         {
             new_len = (item_start - start) + (last - (comma + 1));
 
