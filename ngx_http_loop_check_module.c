@@ -12,19 +12,20 @@
 #define NGX_HTTP_LOOP_CHECK_VARIABLE_CURRENT_LOOPS          0
 #define NGX_HTTP_LOOP_CHECK_VARIABLE_PROXY_ADD_CDN_LOOP     1
 
-typedef struct {
-    ngx_flag_t                 enable;
-    ngx_str_t                  cdn_id;
-    ngx_uint_t                 status_code;
-    ngx_int_t                  max_allow_loops;
 
-    ngx_http_variable_index_t  http_cdn_loop_index;
+typedef struct {
+    ngx_flag_t       enable;
+    ngx_str_t        cdn_id;
+    ngx_uint_t       status_code;
+    ngx_int_t        max_allow_loops;
+
+    ngx_int_t        http_cdn_loop_index;
 } ngx_http_loop_check_conf_t;
 
 
 typedef struct {
-    ngx_str_t                  extra_cdn_loop;
-    ngx_int_t                  current_loops;
+    ngx_str_t        extra_cdn_loop;
+    ngx_int_t        current_loops;
 } ngx_http_loop_check_ctx_t;
 
 
@@ -240,10 +241,11 @@ ngx_http_loop_check_parse_cdn_info(ngx_str_t cdn_loop_value,
 
 
 static ngx_int_t 
-ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r, ngx_http_loop_check_ctx_t *ctx)
+ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
+    ngx_http_loop_check_ctx_t *ctx)
 {
     ngx_http_loop_check_conf_t  *conf;
-    ngx_http_variable_value_t   *v;
+    ngx_http_variable_value_t   *value;
     ngx_str_t                    cdn_loop_value;
     ngx_int_t                    current_loops;
     u_char                      *start, *last, *pos, ;
@@ -253,16 +255,19 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r, ngx_http_loop_check_ct
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_check_module);
 
-    v = ngx_http_get_indexed_variable(r, conf->http_cdn_loop_index);
+    value = ngx_http_get_indexed_variable(r, conf->http_cdn_loop_index);
 
-    if (v == NULL || v->not_found) {
-        cdn_loop_value.len = 0;
-        cdn_loop_value.data = NULL;
+    if (value == NULL || value->not_found) {
+        ctx->current_loops = 0;
+        ctx->extra_cdn_loop.len = 0;
+        ctx->extra_cdn_loop.data = NULL;
 
-    } else {
-        cdn_loop_value.len = v->len;
-        cdn_loop_value.data = v->data;
+        return NGX_OK;
+
     }
+
+    cdn_loop_value.len = value->len;
+    cdn_loop_value.data = value->data;
 
     current_loops = 0;
     new_len = 0;
@@ -330,7 +335,7 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
     ngx_http_loop_check_conf_t   *conf;
     size_t                        len, total_len;
     u_char                       *proxy_add_cdn_loop, *p;
-    
+
     ctx = ngx_http_get_module_ctx(r, ngx_http_loop_check_module);
     if (ctx == NULL) {
         ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_loop_check_ctx_t));
@@ -394,7 +399,7 @@ ngx_http_loop_check_variable(ngx_http_request_t *r,
     v->valid = 1;
     v->no_cacheable = 0;
     v->not_found = 0;
-    
+
     return NGX_OK;
 }
 
@@ -404,7 +409,6 @@ ngx_http_loop_check_handler(ngx_http_request_t *r)
 {
     ngx_http_loop_check_conf_t  *conf;
     ngx_http_loop_check_ctx_t   *ctx;
-
 
     conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_check_module);
 
