@@ -309,7 +309,13 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
         if (ngx_http_loop_check_parse_cdn_info(item_start, item_last,
             conf->cdn_id, &current_loops) == NGX_OK)
         {
-            new_len = (item_start - start) + (last - (comma + 1));
+
+            if (last - (comma + 1) < 0) {
+                new_len = item_start - start;
+
+            } else {
+                new_len = (item_start - start) + (last - (comma + 1));
+            }
 
             new_str = ngx_palloc(r->pool, new_len + 1);
             if (!new_str) {
@@ -318,7 +324,9 @@ ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
 
             ngx_memcpy(new_str, start, item_start - start);
 
-            ngx_memcpy(new_str + (item_start - start), comma + 1, last - (comma + 1));
+            if (last - (comma + 1) > 0) {
+                ngx_memcpy(new_str + (item_start - start), comma + 1, last - (comma + 1));
+            }
 
             new_str[new_len] = '\0';
 
