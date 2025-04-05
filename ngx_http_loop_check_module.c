@@ -29,8 +29,8 @@ typedef struct {
 } ngx_http_loop_check_ctx_t;
 
 
-static ngx_int_t ngx_http_loop_check_parse_cdn_info(u_char *item_start,
-    u_char *item_last, ngx_str_t cdn_id, ngx_int_t *current_loops);
+static ngx_int_t ngx_http_loop_check_parse_cdn_info(u_char *start, size_t len,
+    ngx_str_t cdn_id, ngx_int_t *current_loops);
 static ngx_int_t ngx_http_loop_check_parse_cdn_loop(ngx_http_request_t *r,
     ngx_http_loop_check_ctx_t *ctx);
 static ngx_int_t ngx_http_loop_check_handler(ngx_http_request_t *r);
