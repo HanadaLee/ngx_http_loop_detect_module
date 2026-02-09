@@ -182,7 +182,7 @@ ngx_http_loop_detect_merge_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->enable, prev->enable, 0);
     ngx_conf_merge_uint_value(conf->status_code, prev->status_code, 508);
     ngx_conf_merge_value(conf->max_allow_loops, prev->max_allow_loops, 10);
-    ngx_conf_merge_str_value(conf->cdn_id, prev->cdn_id, "openresty");
+    ngx_conf_merge_str_value(conf->cdn_id, prev->cdn_id, "nginx");
 
     conf->http_cdn_loop_index = ngx_http_get_variable_index(cf,
         &ngx_http_cdn_loop_headers);

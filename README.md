@@ -66,7 +66,7 @@ Enables or disables the loop detection for the current scope. When enabled, the 
 
 **Syntax:** *loop_detect_cdn_id string;*
 
-**Default:** *loop_detect_cdn_id openresty;*
+**Default:** *loop_detect_cdn_id nginx;*
 
 **Context:** *http, server, location*
 
