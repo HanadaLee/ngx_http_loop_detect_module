@@ -151,25 +151,25 @@ ngx_http_loop_detect_add_variables(ngx_conf_t *cf)
 static void *
 ngx_http_loop_detect_create_conf(ngx_conf_t *cf)
 {
-    ngx_http_loop_detect_conf_t  *conf;
+    ngx_http_loop_detect_conf_t  *llcf;
 
-    conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_loop_detect_conf_t));
-    if (conf == NULL) {
+    llcf = ngx_pcalloc(cf->pool, sizeof(ngx_http_loop_detect_conf_t));
+    if (llcf == NULL) {
         return NULL;
     }
 
     /*
      * set by ngx_pcalloc():
      *
-     *     clcf->cdn_id = { 0, NULL };
+     *     llcf->cdn_id = { 0, NULL };
      */
 
-    conf->enable = NGX_CONF_UNSET;
-    conf->status_code = NGX_CONF_UNSET_UINT;
-    conf->max_allow_loops = NGX_CONF_UNSET;
-    conf->http_cdn_loop_index = NGX_CONF_UNSET;
+    llcf->enable = NGX_CONF_UNSET;
+    llcf->status_code = NGX_CONF_UNSET_UINT;
+    llcf->max_allow_loops = NGX_CONF_UNSET;
+    llcf->http_cdn_loop_index = NGX_CONF_UNSET;
 
-    return conf;
+    return llcf;
 }
 
 
@@ -257,11 +257,11 @@ ngx_http_loop_detect_parse_cdn_info(u_char *start, size_t len, ngx_str_t cdn_id,
 }
 
 
-static ngx_int_t 
+static ngx_int_t
 ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
     ngx_http_loop_detect_ctx_t *ctx)
 {
-    ngx_http_loop_detect_conf_t  *conf;
+    ngx_http_loop_detect_conf_t *llcf;
     ngx_http_variable_value_t   *value;
     ngx_str_t                    cdn_loop_value;
     ngx_int_t                    current_loops;
@@ -270,9 +270,9 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
     u_char                      *new_str;
     size_t                       new_len;
 
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
+    llcf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
 
-    value = ngx_http_get_indexed_variable(r, conf->http_cdn_loop_index);
+    value = ngx_http_get_indexed_variable(r, llcf->http_cdn_loop_index);
 
     if (value == NULL || value->not_found) {
         ctx->current_loops = 0;
@@ -306,7 +306,7 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
         }
 
         if (ngx_http_loop_detect_parse_cdn_info(pos, (size_t) (comma - pos),
-            conf->cdn_id, &current_loops) == NGX_OK)
+            llcf->cdn_id, &current_loops) == NGX_OK)
         {
             if (pos == start) {
 
@@ -322,7 +322,7 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
 
                 new_len = last - pos;
                 new_str = ngx_palloc(r->pool, new_len + 1);
-                if (!new_str) {
+                if (new_str == NULL) {
                     return NGX_ERROR;
                 }
 
@@ -342,7 +342,7 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
 
                 new_len = pos - start;
                 new_str = ngx_palloc(r->pool, new_len + 1);
-                if (!new_str) {
+                if (new_str == NULL) {
                     return NGX_ERROR;
                 }
 
@@ -356,7 +356,7 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
 
             new_len = (size_t) (pos - start) + (last - comma);
             new_str = ngx_palloc(r->pool, new_len + 1);
-            if (!new_str) {
+            if (new_str == NULL) {
                 return NGX_ERROR;
             }
 
@@ -378,13 +378,14 @@ ngx_http_loop_detect_parse_cdn_loop(ngx_http_request_t *r,
 }
 
 
-static ngx_int_t 
+static ngx_int_t
 ngx_http_loop_detect_variable(ngx_http_request_t *r,
     ngx_http_variable_value_t *v, uintptr_t data)
 {
-    ngx_http_loop_detect_ctx_t    *ctx;
-    ngx_http_loop_detect_conf_t   *conf;
-    u_char                       *proxy_add_cdn_loop, *p;
+    size_t                       len;
+    u_char                      *proxy_add_cdn_loop, *p;
+    ngx_http_loop_detect_ctx_t  *ctx;
+    ngx_http_loop_detect_conf_t *llcf;
 
     ctx = ngx_http_get_module_ctx(r, ngx_http_loop_detect_module);
     if (ctx == NULL) {
@@ -411,22 +412,15 @@ ngx_http_loop_detect_variable(ngx_http_request_t *r,
 
     } else if (data == NGX_HTTP_LOOP_DETECT_VARIABLE_PROXY_ADD_CDN_LOOP) {
 
-        conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
+        llcf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
+
+        len = llcf->cdn_id.len + sizeof("; loops=") - 1 + NGX_INT_T_LEN + 1;
 
         if (ctx->extra_cdn_loop.len > 0) {
-            proxy_add_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
-                                                  + sizeof("; loops=") - 1
-                                                  + NGX_INT_T_LEN
-                                                  + sizeof(", ") - 1
-                                                  + ctx->extra_cdn_loop.len
-                                                  + 1);
-
-        } else {
-            proxy_add_cdn_loop = ngx_pnalloc(r->pool, conf->cdn_id.len
-                                                  + sizeof("; loops=") - 1
-                                                  + NGX_INT_T_LEN
-                                                  + 1);
+            len += sizeof(", ") - 1 + ctx->extra_cdn_loop.len;
         }
+
+        proxy_add_cdn_loop = ngx_pnalloc(r->pool, len);
 
         if (proxy_add_cdn_loop == NULL) {
             return NGX_ERROR;
@@ -434,12 +428,12 @@ ngx_http_loop_detect_variable(ngx_http_request_t *r,
 
         if (ctx->extra_cdn_loop.len > 0) {
             p = ngx_sprintf(proxy_add_cdn_loop, "%V; loops=%i, %V",
-                    &conf->cdn_id, ctx->current_loops + 1,
-                    &ctx->extra_cdn_loop);
+                            &llcf->cdn_id, ctx->current_loops + 1,
+                            &ctx->extra_cdn_loop);
 
         } else {
-            p = ngx_sprintf(proxy_add_cdn_loop, "%V; loops=%i", &conf->cdn_id,
-                    ctx->current_loops + 1);
+            p = ngx_sprintf(proxy_add_cdn_loop, "%V; loops=%i", &llcf->cdn_id,
+                            ctx->current_loops + 1);
         }
 
         v->len = p - proxy_add_cdn_loop;
@@ -457,12 +451,12 @@ ngx_http_loop_detect_variable(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_loop_detect_handler(ngx_http_request_t *r)
 {
-    ngx_http_loop_detect_conf_t  *conf;
+    ngx_http_loop_detect_conf_t  *llcf;
     ngx_http_loop_detect_ctx_t   *ctx;
 
-    conf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
+    llcf = ngx_http_get_module_loc_conf(r, ngx_http_loop_detect_module);
 
-    if (!conf->enable) {
+    if (!llcf->enable) {
         return NGX_DECLINED;
     }
 
@@ -480,12 +474,12 @@ ngx_http_loop_detect_handler(ngx_http_request_t *r)
         }
     }
 
-    if (ctx->current_loops > conf->max_allow_loops) {
+    if (ctx->current_loops > llcf->max_allow_loops) {
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "loop_detect: request loops exceeded the limit, "
                       "current_loops: %i, max_allow_loops: %i",
-                      ctx->current_loops, conf->max_allow_loops);
-        return conf->status_code;
+                      ctx->current_loops, llcf->max_allow_loops);
+        return llcf->status_code;
     }
 
     return NGX_DECLINED;
